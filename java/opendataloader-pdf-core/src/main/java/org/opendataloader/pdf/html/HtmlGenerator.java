@@ -7,8 +7,9 @@
  */
 package org.opendataloader.pdf.html;
 
-import org.opendataloader.pdf.containers.StaticLayoutContainers;
 import org.opendataloader.pdf.api.Config;
+import org.opendataloader.pdf.containers.StaticLayoutContainers;
+import org.opendataloader.pdf.utils.TextDecorations;
 import org.verapdf.wcag.algorithms.entities.IObject;
 import org.verapdf.wcag.algorithms.entities.SemanticHeading;
 import org.verapdf.wcag.algorithms.entities.SemanticParagraph;
@@ -31,6 +32,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -162,7 +164,7 @@ public class HtmlGenerator implements Closeable {
 
     protected void writeSemanticTextNode(SemanticTextNode textNode) throws IOException {
         htmlWriter.write(HtmlSyntax.HTML_FIGURE_CAPTION_TAG);
-        htmlWriter.write(getCorrectString(textNode.getValue()));
+        htmlWriter.write(getCorrectString(getHtmlValue(textNode, false)));
         htmlWriter.write(HtmlSyntax.HTML_FIGURE_CAPTION_CLOSE_TAG);
         htmlWriter.write(HtmlSyntax.HTML_LINE_BREAK);
     }
@@ -205,18 +207,13 @@ public class HtmlGenerator implements Closeable {
     }
 
     protected void writeParagraph(SemanticParagraph paragraph) throws IOException {
-        String paragraphValue = paragraph.getValue();
+        String paragraphValue = getHtmlValue(paragraph, true);
         double paragraphIndent = paragraph.getColumns().get(0).getBlocks().get(0).getFirstLineIndent();
 
         htmlWriter.write(HtmlSyntax.HTML_PARAGRAPH_TAG);
         if (paragraphIndent > 0) {
             htmlWriter.write(HtmlSyntax.HTML_INDENT);
         }
-
-        if (isInsideTable() && StaticContainers.isKeepLineBreaks()) {
-            paragraphValue = paragraphValue.replace(HtmlSyntax.HTML_LINE_BREAK, HtmlSyntax.HTML_LINE_BREAK_TAG);
-        }
-
         htmlWriter.write(getCorrectString(paragraphValue));
         htmlWriter.write(HtmlSyntax.HTML_PARAGRAPH_CLOSE_TAG);
         htmlWriter.write(HtmlSyntax.HTML_LINE_BREAK);
@@ -225,7 +222,7 @@ public class HtmlGenerator implements Closeable {
     protected void writeHeading(SemanticHeading heading) throws IOException {
         int headingLevel = Math.min(6, Math.max(1, heading.getHeadingLevel()));
         htmlWriter.write("<h" + headingLevel + ">");
-        htmlWriter.write(getCorrectString(heading.getValue()));
+        htmlWriter.write(getCorrectString(getHtmlValue(heading, false)));
         htmlWriter.write("</h" + headingLevel + ">");
         htmlWriter.write(HtmlSyntax.HTML_LINE_BREAK);
     }
@@ -258,6 +255,55 @@ public class HtmlGenerator implements Closeable {
 
     protected boolean isInsideTable() {
         return tableNesting > 0;
+    }
+
+    private String getHtmlValue(SemanticTextNode textNode, boolean replaceLineBreaksInTable) {
+        String value = textNode.getValue();
+        value = applyUnderlineDecorations(value, textNode);
+        if (value != null && replaceLineBreaksInTable && isInsideTable() && StaticContainers.isKeepLineBreaks()) {
+            value = value.replace(HtmlSyntax.HTML_LINE_BREAK, HtmlSyntax.HTML_LINE_BREAK_TAG);
+        }
+        return value;
+    }
+
+    private String applyUnderlineDecorations(String value, SemanticTextNode textNode) {
+        if (value == null) {
+            return null;
+        }
+        List<TextDecorations.TextDecorationMark> marks = TextDecorations.pullUnderlinesFor(textNode);
+        if (marks.isEmpty()) {
+            return value;
+        }
+        marks.sort(Comparator.comparingDouble(TextDecorations.TextDecorationMark::getLeftX));
+        StringBuilder builder = new StringBuilder();
+        int cursor = 0;
+        boolean replaced = false;
+        for (TextDecorations.TextDecorationMark mark : marks) {
+            if (cursor > value.length()) {
+                break;
+            }
+            String chunkText = mark.getText();
+            if (chunkText == null || chunkText.isEmpty()) {
+                continue;
+            }
+            int index = value.indexOf(chunkText, cursor);
+            if (index < 0) {
+                continue;
+            }
+            builder.append(value, cursor, index);
+            builder.append(HtmlSyntax.HTML_UNDERLINE_OPEN_TAG)
+                .append(chunkText)
+                .append(HtmlSyntax.HTML_UNDERLINE_CLOSE_TAG);
+            cursor = index + chunkText.length();
+            replaced = true;
+        }
+        if (!replaced) {
+            return value;
+        }
+        if (cursor < value.length()) {
+            builder.append(value.substring(cursor));
+        }
+        return builder.toString();
     }
 
     protected String getCorrectString(String value) {
