@@ -7,6 +7,7 @@
  */
 package org.opendataloader.pdf.processors;
 
+import org.opendataloader.pdf.utils.TextDecorations;
 import org.verapdf.gf.model.factory.chunks.ChunkParser;
 import org.verapdf.wcag.algorithms.entities.IObject;
 import org.verapdf.wcag.algorithms.entities.content.ImageChunk;
@@ -94,6 +95,7 @@ public class TextProcessor {
                 lastTextChunk = (TextChunk) object;
             } else if (object instanceof ImageChunk && lastTextChunk != null &&
                     isTextChunkDecorationImage((ImageChunk) object, lastTextChunk)) {
+                TextDecorations.markUnderline(lastTextChunk);
                 contents.set(index, null);
             }
         }

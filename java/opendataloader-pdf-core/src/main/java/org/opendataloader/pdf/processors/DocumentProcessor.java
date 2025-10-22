@@ -16,6 +16,7 @@ import org.opendataloader.pdf.html.HtmlGeneratorFactory;
 import org.opendataloader.pdf.pdf.PDFWriter;
 import org.opendataloader.pdf.api.Config;
 import org.opendataloader.pdf.text.TextGenerator;
+import org.opendataloader.pdf.utils.TextDecorations;
 import org.verapdf.as.ASAtom;
 import org.verapdf.containers.StaticCoreContainers;
 import org.verapdf.cos.COSDictionary;
@@ -48,6 +49,7 @@ public class DocumentProcessor {
     private static final Logger LOGGER = Logger.getLogger(DocumentProcessor.class.getCanonicalName());
     public static void processFile(String inputPdfName, Config config) throws IOException {
         preprocessing(inputPdfName, config);
+        TextDecorations.clear();
         calculateDocumentInfo();
         List<List<IObject>> contents = new ArrayList<>();
         for (int pageNumber = 0; pageNumber < StaticContainers.getDocument().getNumberOfPages(); pageNumber++) {

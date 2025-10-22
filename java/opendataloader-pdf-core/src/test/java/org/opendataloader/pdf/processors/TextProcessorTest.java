@@ -9,6 +9,7 @@ package org.opendataloader.pdf.processors;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.opendataloader.pdf.utils.TextDecorations;
 import org.verapdf.wcag.algorithms.entities.IObject;
 import org.verapdf.wcag.algorithms.entities.content.ImageChunk;
 import org.verapdf.wcag.algorithms.entities.content.TextChunk;
@@ -21,6 +22,7 @@ public class TextProcessorTest {
 
     @Test
     public void testRemoveSameTextChunks() {
+        TextDecorations.clear();
         List<IObject> contents = new ArrayList<>();
         contents.add(new TextChunk(new BoundingBox(1, 10.0, 10.0, 20.0, 20.0),
             "test", 10, 10.0));
@@ -33,6 +35,7 @@ public class TextProcessorTest {
 
     @Test
     public void testRemoveTextDecorationImages() {
+        TextDecorations.clear();
         List<IObject> contents = new ArrayList<>();
         contents.add(new TextChunk(new BoundingBox(1, 10.0, 10.0, 20.0, 20.0),
             "test", 10, 10.0));

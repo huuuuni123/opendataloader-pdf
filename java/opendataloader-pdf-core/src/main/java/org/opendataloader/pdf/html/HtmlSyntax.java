@@ -25,6 +25,8 @@ public class HtmlSyntax {
     public static final String HTML_LIST_ITEM_TAG = "<li>";
     public static final String HTML_LIST_ITEM_CLOSE_TAG = "</li>";
     public static final String HTML_LINE_BREAK_TAG = "<br>";
+    public static final String HTML_UNDERLINE_OPEN_TAG = "<u>";
+    public static final String HTML_UNDERLINE_CLOSE_TAG = "</u>";
     public static final String HTML_INDENT = "";
     public static final String HTML_PARAGRAPH_TAG = "<p>";
     public static final String HTML_PARAGRAPH_CLOSE_TAG = "</p>";
