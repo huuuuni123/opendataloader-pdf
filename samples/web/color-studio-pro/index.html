@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>컬러 스튜디오 Pro – 대시보드 통합</title>
+<!-- QR (옵션) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<!-- Google API (Drive 공유 옵션) -->
+<script src="https://apis.google.com/js/api.js"></script>
+<style>
+  :root{
+    /* Dark */
+    --bg:#0b0c10; --panel:#11131a; --text:#e7e9ee; --muted:#9aa3b2;
+    --pri:#6C5CE7; --accent:#10B981; --border:#1f2330; --ring:#6C5CE788;
+    --radius:16px;
+  }
+  [data-theme="light"]{
+    --bg:#f5f7fb; --panel:#ffffff; --text:#0b0c10; --muted:#6b7280;
+    --pri:#5B74F9; --accent:#0EA5A6; --border:#e5e8f1; --ring:#5B74F966;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+       background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+  .container{max-width:1200px;margin:0 auto;padding:24px}
+  .header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .title h1{margin:0;font-weight:800;letter-spacing:-.02em;font-size:28px;display:flex;align-items:center;gap:10px}
+  .title p{margin:4px 0 0;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .btn{appearance:none;border:1px solid var(--border);background:var(--panel);color:var(--text);
+       padding:8px 14px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+       transition:all .15s ease-out;font-weight:600;white-space:nowrap;}
+  .btn:hover{box-shadow:0 0 0 2px var(--ring)}
+  .btn.icon-btn{padding:8px;font-size:16px;height:38px;min-width:38px;justify-content:center}
+  .btn.ghost{background:transparent}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .toolbar-group {display:flex; gap:6px; padding:6px; border: 1px solid var(--border); border-radius:12px; background:var(--panel)}
+  select, option{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px;font-weight:600}
+
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:transparent;margin-top:24px}
+  .tab-btn{padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer;font-weight:700}
+  .tab-btn.active{color:var(--text);box-shadow:0 0 0 2px var(--ring)}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .panel h3{margin:0;padding:16px 18px;border-bottom:1px solid var(--border);font-size:16px;font-weight:800;letter-spacing:.01em}
+  .panel .content{padding:18px}
+  .grid{display:grid;gap:16px}
+  .grid.cols-auto{grid-template-columns:repeat(auto-fit, minmax(320px, 1fr))}
+  .row-wrap{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .preview{height:160px;border-radius:12px;border:1px solid var(--border);transition: background .2s;}
+  input[type="color"]{min-width:48px;height:40px;border-radius:10px;border:1px solid var(--border);background:transparent;padding:4px}
+  .input{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;padding:8px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .slider-group{display:flex;flex-direction:column;gap:4px;}
+  .slider-label{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+  .slider{width:100%;-webkit-appearance:none;background:transparent;cursor:pointer}
+  .slider::-webkit-slider-runnable-track{height:6px;background:linear-gradient(to right, #2222, #5555);border-radius:3px}
+  .slider::-webkit-slider-thumb{ -webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--text);border:3px solid var(--pri);margin-top:-6px}
+
+  .swatch-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(60px, 1fr));gap:8px}
+  .sw{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;aspect-ratio:1/1;cursor:pointer;}
+  .sw .ink{position:absolute;inset:0;transition:transform .15s}
+  .sw:hover .ink{transform:scale(1.03)}
+  .sw .name{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(0,0,0,.48);backdrop-filter:blur(4px);color:#fff;border-radius:6px;padding:3px 6px;font-size:11px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  /* 액션 버튼 정렬 개선 */
+  .sw .actions{position:absolute;right:6px;bottom:6px;display:flex;gap:6px;opacity:1;pointer-events:auto;}
+  .action-btn{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,.45);display:grid;place-items:center;color:#fff;font-size:12px;cursor:pointer}
+  .action-btn:hover{background:rgba(0,0,0,.65)}
+  .sw.selected{outline:2px solid var(--pri); outline-offset:0}
+
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:nowrap;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:12px}
+
+  /* Scroll areas */
+  .scroll-area{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:10px;background:transparent}
+  #bigGridWrap.scroll-area{max-height:460px}
+  .scroll-area::-webkit-scrollbar{height:10px;width:10px}
+  .scroll-area::-webkit-scrollbar-thumb{background:#2a304366;border-radius:999px}
+  .scroll-area::-webkit-scrollbar-track{background:#00000011;border-radius:999px}
+
+  /* Hovercard */
+  .hovercard{position:fixed;z-index:60;width:260px;background:#ffffff;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.45);display:none;overflow:hidden;border:1px solid #e5e7eb}
+  .hc-top{height:140px}
+  .hc-bottom{background:#ffffff;color:#111827;padding:12px}
+  .hc-title{font-weight:800;letter-spacing:-.01em}
+  .hc-meta{color:#4b5563;font-size:12px;margin-top:2px}
+  .hc-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .hc-chip{font-family:ui-monospace,Menlo,monospace;border:1px solid #e5e7eb;padding:2px 6px;border-radius:8px;background:#f8fafc}
+  .hc-actions{display:flex;gap:6px;margin-top:10px}
+  .hc-btn{border:1px solid #e5e7eb;background:#f3f4f6;color:#111827;border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer}
+  .hc-pin-actions{position:absolute;top:8px;right:8px;display:flex;gap:6px;}
+  .hc-pin-btn{background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:8px;width:28px;height:28px;font-size:12px;cursor:pointer;display:grid;place-items:center;}
+  .pinned{outline:2px solid var(--ring)}
+
+  /* Mini grid popover */
+  .popover{position:absolute;z-index:70;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:10px;display:none}
+  .mini-grid{display:grid;grid-template-columns:repeat(12, 16px);gap:6px}
+  .mini-cell{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);cursor:pointer}
+
+  /* Modal (QR) */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:90;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+  .modal-overlay.visible{opacity:1;pointer-events:auto}
+  .modal-content{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:90%;max-width:400px;text-align:center;}
+  #qrcode{margin:16px auto 0; padding:16px; background:white; border-radius:8px; width:fit-content;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header-row">
+    <div class="title">
+      <h1>🎨 컬러 스튜디오 Pro</h1>
+      <p>대시보드 중심 · 라이트/다크 테마 · 미니 그리드 선택</p>
+    </div>
+    <div class="toolbar">
+      <select id="palSelect" aria-label="팔레트 선택"></select>
+      <div class="toolbar-group">
+        <button class="btn icon-btn" id="btn-new" title="새 팔레트">➕</button>
+        <button class="btn icon-btn" id="btn-save" title="저장">💾</button>
+        <button class="btn icon-btn" id="btn-dup" title="복제">📋</button>
+        <button class="btn icon-btn" id="btn-del" title="삭제">🗑️</button>
+      </div>
+      <div class="toolbar-group">
+        <button class="btn" id="btn-import">가져오기</button>
+        <button class="btn" id="btn-export">JSON</button>
+        <button class="btn" id="btn-export-ase">ASE</button>
+        <button class="btn icon-btn" id="btn-share" title="QR 공유">🔗</button>
+      </div>
+      <div class="toolbar-group">
+        <button class="btn" id="btn-drive-auth">Drive 연결</button>
+        <button class="btn" id="btn-drive-share">Drive 공유</button>
+      </div>
+      <div class="toolbar-group">
+        <button class="btn" id="btn-theme">🌙 다크</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="dashboard" role="tab" aria-controls="tab-dashboard">대시보드</button>
+    <button class="tab-btn" data-tab="ai" role="tab" aria-controls="tab-ai">AI & 이미지</button>
+    <button class="tab-btn" data-tab="palette" role="tab" aria-controls="tab-palette">팔레트</button>
+  </div>
+
+  <main style="margin-top:24px;">
+    <section id="tab-dashboard">
+      <div class="grid cols-auto">
+        <div class="panel">
+          <h3>메인 색상</h3>
+          <div class="content" style="display:flex;flex-direction:column;gap:16px">
+            <div id="preview1" class="preview" aria-label="미리보기"></div>
+
+            <!-- 그라디언트 생성기 (이동) -->
+            <div class="row-wrap" style="gap:12px;align-items:flex-start;flex-wrap:wrap">
+              <div class="row-wrap" style="gap:10px">
+                <input type="color" id="colorInput1">
+                <input class="input" id="hexInput1" placeholder="#6C5CE7" maxlength="7">
+                <button class="btn icon-btn" id="eyedrop1" title="스포이트">💧</button>
+                <button class="btn icon-btn" id="openMiniGrid" title="그리드 선택">🟦</button>
+                <button class="btn" id="addCurrent">팔레트에 추가</button>
+              </div>
+
+              <div class="row-wrap" style="gap:10px; border-left:1px solid var(--border); padding-left:12px">
+                <label>시작:</label> <input type="color" id="colorStart" />
+                <input class="input" id="hexStart" maxlength="7" placeholder="#6C5CE7"/>
+                <label>끝:</label> <input type="color" id="colorEnd" />
+                <input class="input" id="hexEnd" maxlength="7" placeholder="#10B981"/>
+                <button class="btn" id="copyCss">CSS 복사</button>
+              </div>
+              <div id="gradPrev" class="preview" style="height:90px; width:100%"></div>
+              <div class="code" id="cssCode" style="width:100%"></div>
+            </div>
+
+            <!-- 미니 그리드 팝오버 -->
+            <div id="miniPopover" class="popover" role="dialog" aria-modal="true">
+              <div id="miniGrid" class="mini-grid" aria-label="미니 색상표"></div>
+            </div>
+
+            <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+              <div class="slider-group">
+                <div class="slider-label"><span>색상</span><span class="muted" id="hVal">0°</span></div>
+                <input class="slider" type="range" min="0" max="359" value="260" id="hSl" aria-label="Hue"/>
+              </div>
+              <div class="slider-group">
+                <div class="slider-label"><span>채도</span><span class="muted" id="sVal">0%</span></div>
+                <input class="slider" type="range" min="0" max="100" value="70" id="sSl" aria-label="Saturation"/>
+              </div>
+              <div class="slider-group">
+                <div class="slider-label"><span>명도</span><span class="muted" id="lVal">0%</span></div>
+                <input class="slider" type="range" min="0" max="100" value="60" id="lSl" aria-label="Lightness"/>
+              </div>
+            </div>
+            <div class="row-wrap">
+              <button class="btn" id="copyHex1">HEX 복사</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="panel">
+            <h3>명암 대비 (WCAG)</h3>
+            <div class="content">
+              <div class="grid" style="grid-template-columns:1fr 1fr;">
+                <div class="panel">
+                  <h3 style="font-size:14px;margin:0;padding:0 0 8px 0;border:none">밝은 텍스트(흰색)</h3>
+                  <div class="content" id="wcagW" style="height:120px;padding:12px"></div>
+                </div>
+                <div class="panel">
+                  <h3 style="font-size:14px;margin:0;padding:0 0 8px 0;border:none">어두운 텍스트(검정)</h3>
+                  <div class="content" id="wcagB" style="height:120px;padding:12px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>팔레트 미리보기</h3>
+            <div class="content">
+              <div class="row-wrap" style="justify-content:space-between">
+                <div class="muted"><span id="countLabel">0</span>개 색상</div>
+                <button class="btn ghost" id="resetUnlocked">잠금 외 초기화</button>
+              </div>
+              <div id="miniGridWrap" class="scroll-area" style="margin-top:12px">
+                <div id="miniPalGrid" class="swatch-grid"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 추천/조화 -->
+      <div class="panel" style="margin-top:16px">
+        <h3>추천 · 기본 조화</h3>
+        <div class="content">
+          <div id="harmonyGrid" class="grid cols-auto"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h3>확장 색영역 · 디자이너용</h3>
+        <div class="content">
+          <div id="extraRegions" class="grid cols-auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-ai" hidden>
+      <div class="panel">
+        <h3>이미지에서 색상 추출</h3>
+        <div class="content">
+          <div id="imageDropzone" style="border:2px dashed var(--border); border-radius:12px; padding:40px; text-align:center; cursor:pointer;">
+            <p class="muted">이미지를 드래그 앤 드롭하거나 클릭하세요.</p>
+          </div>
+          <img id="imagePreview" alt="미리보기" style="max-width:100%; max-height:200px; border-radius:10px; border:1px solid var(--border); display:none; margin-top:16px;"/>
+          <div id="imageResult" style="margin-top:16px; display:none;">
+            <h4>추출된 색상</h4>
+            <div id="imageResultGrid" class="swatch-grid"></div>
+            <div class="row-wrap" style="margin-top:16px;">
+              <button class="btn" id="addImageToPalette">선택 색상 팔레트에 추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-palette" hidden>
+      <div class="panel">
+        <h3>전체 팔레트</h3>
+        <div class="content">
+          <div class="row-wrap" style="justify-content:space-between">
+            <div class="muted"><span id="countLabel2">0</span>개 색상</div>
+          </div>
+          <div id="bigGridWrap" class="scroll-area" style="margin-top:12px">
+            <div id="bigGrid" class="swatch-grid" style="grid-template-columns:repeat(auto-fill, minmax(80px, 1fr))"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Hover Card -->
+<div id="hoverCard" class="hovercard">
+  <div class="hc-top" id="hcTop"></div>
+  <div class="hc-pin-actions">
+    <button class="hc-pin-btn" id="hcPin" title="고정/해제">📌</button>
+    <button class="hc-pin-btn" id="hcClose" title="닫기">✕</button>
+  </div>
+  <div class="hc-bottom">
+    <div class="hc-title" id="hcName"></div>
+    <div class="hc-meta" id="hcMeta"></div>
+    <div class="hc-row"><span>HEX</span><span class="hc-chip" id="hcHex"></span></div>
+    <div class="hc-row"><span>RGB</span><span class="hc-chip" id="hcRgb"></span></div>
+    <div class="hc-actions">
+      <button class="hc-btn" id="hcCopyHex">HEX 복사</button>
+      <button class="hc-btn" id="hcCopyRgb">RGB 복사</button>
+      <button class="hc-btn" id="hcAdd">팔레트에 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 공유 모달 -->
+<div id="modal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true">
+    <h3 id="modal-title">팔레트 공유</h3>
+    <p id="modal-text" class="muted">QR 또는 링크로 공유합니다.</p>
+    <div id="qrcode"></div>
+    <input id="share-url" class="input" style="width:100%; margin-top:16px; text-align:center;" readonly>
+    <div class="row-wrap" style="justify-content:center; margin-top:16px;">
+      <button class="btn" id="copy-url-btn">링크 복사</button>
+      <button class="btn ghost" id="modal-close-btn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" hidden multiple />
+
+<script>
+(function(){
+  'use strict';
+
+  /* ===== Drive API 설정 (값 채워넣으면 활성화) ===== */
+  const DRIVE_CFG = {
+    API_KEY: 'PUT_YOUR_API_KEY_HERE',
+    CLIENT_ID: 'PUT_YOUR_OAUTH_CLIENT_ID_HERE',
+    SCOPE: 'https://www.googleapis.com/auth/drive.file',
+    FOLDER_ROOT: 'Color Palettes'
+  };
+
+  const App = {
+    state:{
+      palettesDB:[],
+      currentPaletteId:null,
+      get palette(){ const p=this.palettesDB.find(p=>p.id===this.currentPaletteId); return p? p.colors:[]; },
+      set palette(colors){ const i=this.palettesDB.findIndex(p=>p.id===this.currentPaletteId); if(i>-1) this.palettesDB[i].colors=colors; },
+      currentColor:"#6C5CE7",
+      gradient:{start:"#6C5CE7", end:"#10B981"},
+      hoverCard:{pinned:false, hex:null},
+      gapiInited:false, driveAuthed:false
+    },
+    utils:{
+      clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),
+      hexToRgb:(hex)=>{const h=(hex||'#000000').replace('#',''); const n=h.length===3?h.split('').map(x=>x+x).join(''):h.padEnd(6,'0'); return {r:parseInt(n.slice(0,2)||'00',16), g:parseInt(n.slice(2,4)||'00',16), b:parseInt(n.slice(4,6)||'00',16)};},
+      rgbToHex:({r,g,b})=>"#"+[r,g,b].map(v=>Math.min(255,Math.max(0,v)).toString(16).padStart(2,'0')).join('').toUpperCase(),
+      rgbToHsl:({r,g,b})=>{r/=255; g/=255; b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b); let h=0,s=0; const l=(max+min)/2; if(max!==min){const d=max-min; s=l>0.5? d/(2-max-min): d/(max+min); switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;} h/=6;} return {h:Math.round(h*360)%360,s:Math.round(s*100),l:Math.round(l*100)};},
+      hslToRgb:({h,s,l})=>{h=((h%360)+360)%360; h/=360; s=Math.min(100,Math.max(0,s))/100; l=Math.min(100,Math.max(0,l))/100; if(s===0){const v=Math.round(l*255); return {r:v,g:v,b:v};} const hue2rgb=(p,q,t)=>{if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p;}; const q=l<0.5? l*(1+s): l+s-l*s; const p=2*l-q; return {r:Math.round(hue2rgb(p,q,h+1/3)*255), g:Math.round(hue2rgb(p,q,h)*255), b:Math.round(hue2rgb(p,q,h-1/3)*255)};},
+      srgbToLinear:(v)=>{const s=v/255; return s<=0.04045? s/12.92: Math.pow((s+0.055)/1.055,2.4);},
+      linearToSrgb:(v)=>{const s=v<=0.0031308? v*12.92: 1.055*Math.pow(v,1/2.4)-0.055; return Math.round(App.utils.clamp(s,0,1)*255);},
+      mixColors:(hexA,hexB,amount=0.5)=>{
+        amount=App.utils.clamp(amount,0,1);
+        const a=App.utils.hexToRgb(hexA), b=App.utils.hexToRgb(hexB);
+        const blend=(ca,cb)=>{
+          const la=App.utils.srgbToLinear(ca);
+          const lb=App.utils.srgbToLinear(cb);
+          return App.utils.linearToSrgb(la*(1-amount)+lb*amount);
+        };
+        return App.utils.rgbToHex({r:blend(a.r,b.r), g:blend(a.g,b.g), b:blend(a.b,b.b)});
+      },
+      setL:(hex,l)=>{const hsl=App.utils.rgbToHsl(App.utils.hexToRgb(hex)); return App.utils.rgbToHex(App.utils.hslToRgb({h:hsl.h,s:hsl.s,l:Math.min(100,Math.max(0,l))}));},
+      setS:(hex,s)=>{const hsl=App.utils.rgbToHsl(App.utils.hexToRgb(hex)); return App.utils.rgbToHex(App.utils.hslToRgb({h:hsl.h,s:Math.min(100,Math.max(0,s)),l:hsl.l}));},
+      shiftHue:(hex,deg)=>{const hsl=App.utils.rgbToHsl(App.utils.hexToRgb(hex)); return App.utils.rgbToHex(App.utils.hslToRgb({h:(hsl.h+deg+360)%360,s:hsl.s,l:hsl.l}));},
+      luminance:({r,g,b})=>{const s=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92: Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*s[0]+0.7152*s[1]+0.0722*s[2];},
+      contrastRatio:(a,b)=>{const L1=App.utils.luminance(App.utils.hexToRgb(a)); const L2=App.utils.luminance(App.utils.hexToRgb(b)); return (Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);},
+      copyText: async (t)=>{try{await navigator.clipboard.writeText(t); App.utils.toast('복사했습니다.');}catch(e){App.utils.toast('복사 실패');}},
+      toast:(t)=>{const el=document.createElement('div'); el.textContent=t; el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:8px 16px;border:1px solid var(--border);background:var(--panel);border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:14px;color:var(--text);z-index:100;'; document.body.appendChild(el); setTimeout(()=>el.remove(),1500);},
+      colorNameKo:(hex)=>{const {h,s,l}=App.utils.rgbToHsl(App.utils.hexToRgb(hex)); if(s<10) return l>85?'흰색 계열': l<15?'검정 계열':'회색 계열'; const tone=l>75?'밝은 ': l<30?'어두운 ': s>65?'선명한 ':'차분한 '; const band=h=>{if(h<15||h>=345)return'레드'; if(h<35)return'오렌지'; if(h<55)return'옐로'; if(h<85)return'라임'; if(h<150)return'그린'; if(h<190)return'청록'; if(h<210)return'하늘'; if(h<240)return'블루'; if(h<275)return'인디고'; if(h<305)return'퍼플'; if(h<330)return'마젠타'; return'핑크';}; return `${tone}${band(h)}`;}
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  function init(){
+    loadDB(); refreshPalSelect(); bindEvents(); buildMiniGrid(); rerenderAll();
+    const savedTheme=localStorage.getItem('cs-theme')||'dark';
+    document.documentElement.setAttribute('data-theme',savedTheme);
+    document.getElementById('btn-theme').textContent = savedTheme==='light'?'🌞 라이트':'🌙 다크';
+  }
+
+  function loadDB(){
+    let db=JSON.parse(localStorage.getItem('palettesDB')||'null');
+    if(!db){
+      db=[{id:String(Date.now()),name:'기본 팔레트', colors:["#6C5CE7","#10B981","#F59E0B","#EF4444","#3B82F6","#EC4899","#F9FAFB","#6B7280","#111827"].map((c,i)=>({id:String(i),hex:c,name:App.utils.colorNameKo(c),locked:false}))}];
+    }
+    App.state.palettesDB=db;
+    App.state.currentPaletteId=localStorage.getItem('currentPaletteId')||(db.length?db[0].id:null);
+  }
+  function saveDB(){ localStorage.setItem('palettesDB', JSON.stringify(App.state.palettesDB)); localStorage.setItem('currentPaletteId', App.state.currentPaletteId); }
+
+  function rerenderAll(){
+    setCurrentColor(App.state.currentColor);
+    setGradientColors(App.state.gradient.start, App.state.gradient.end);
+    renderPaletteGrids();
+    renderHarmonies();
+    renderExtraRegions();
+    renderWCAG();
+  }
+  function refreshPalSelect(){
+    const sel=document.getElementById('palSelect'); sel.innerHTML='';
+    App.state.palettesDB.forEach(p=>{const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; if(p.id===App.state.currentPaletteId)o.selected=true; sel.appendChild(o);});
+  }
+  function renderPaletteGrids(){
+    renderPalGrid('miniPalGrid');
+    renderPalGrid('bigGrid');
+    const count=App.state.palette.length;
+    document.getElementById('countLabel').textContent=count;
+    document.getElementById('countLabel2').textContent=count;
+  }
+  function renderPalGrid(rootId){
+    const root=document.getElementById(rootId); if(!root) return; root.innerHTML='';
+    App.state.palette.forEach(p=>{
+      const el=document.createElement('div'); el.className='sw'; el.dataset.id=p.id; el.dataset.hex=p.hex; el.dataset.name=p.name;
+      el.innerHTML=`
+        <div class="ink" style="background:${p.hex}"></div>
+        <div class="name">${p.name}</div>
+        <div class="actions">
+          <button class="action-btn" data-action="lock" title="잠금">${p.locked?'🔒':'🔓'}</button>
+          <button class="action-btn" data-action="copy" title="HEX 복사">⧉</button>
+          <button class="action-btn" data-action="delete" title="삭제">✕</button>
+        </div>`;
+      root.appendChild(el);
+    });
+  }
+  function renderWCAG(){
+    const a=App.state.currentColor;
+    const rW=App.utils.contrastRatio(a,'#FFFFFF').toFixed(2);
+    const rB=App.utils.contrastRatio(a,'#000000').toFixed(2);
+    const w=document.getElementById('wcagW'), b=document.getElementById('wcagB');
+    w.style.background=a; w.style.color='#FFFFFF'; w.innerHTML=`<div style="font-weight:800">텍스트 예시</div><div class="muted">대비 ${rW}:1</div>`;
+    b.style.background=a; b.style.color='#000000'; b.innerHTML=`<div style="font-weight:800">텍스트 예시</div><div class="muted">대비 ${rB}:1</div>`;
+  }
+  function renderHarmonies(){
+    const base=App.state.currentColor, root=document.getElementById('harmonyGrid'); root.innerHTML='';
+    const makeCard=(title, colors)=>`
+      <div class="panel">
+        <h3 style="border:none;padding:12px 18px 0 18px">${title}</h3>
+        <div class="content" style="padding-top:8px">
+          <div class="swatch-grid">${colors.map(c=>`<div class="sw" data-hex="${c}"><div class="ink" style="background:${c}"></div></div>`).join('')}</div>
+          <div class="row-wrap" style="margin-top:8px">
+            <button class="btn" data-action="rec-add" data-colors='${JSON.stringify(colors)}'>모두 추가</button>
+            <button class="btn ghost" data-action="rec-copy" data-colors='${JSON.stringify(colors)}'>HEX 복사</button>
+          </div>
+        </div>
+      </div>`;
+    const shift=(d)=>App.utils.shiftHue(base,d);
+    const groups = [
+      ['보색', [base, shift(180)]],
+      ['삼색', [base, shift(120), shift(240)]],
+      ['유사', [shift(-30), base, shift(30)]],
+      ['모노크롬', [92,80,68,56,44,32,20].map(l=>App.utils.setL(base,l))]
+    ];
+    root.innerHTML = groups.map(([n, arr]) => makeCard(n, arr)).join('');
+  }
+  function renderExtraRegions(){
+    const base=App.state.currentColor, root=document.getElementById('extraRegions'); root.innerHTML='';
+    const shift=(d)=>App.utils.shiftHue(base,d);
+    const neutral=createNeutralScale(base);
+    const aa=[]; ['#000000','#111827','#FFFFFF','#F9FAFB','#374151'].forEach(txt=>{if(App.utils.contrastRatio(base,txt)>=4.5) aa.push(txt);});
+    const groups=[
+      ['테트라드',[base,shift(90),shift(180),shift(270)]],
+      ['직사각(보색+유사)',[base,shift(180),shift(30),shift(210)]],
+      ['뉴트럴 스케일',neutral],
+      ['UI 상태색',[base, App.utils.setS(shift(180),55), '#10B981', '#F59E0B', '#EF4444']],
+      ['AA 안전 텍스트', aa.length?aa:['#FFFFFF']]
+    ];
+    root.innerHTML = groups.map(([name, arr]) => `
+      <div class="panel">
+        <h3 style="border:none;padding:12px 18px 0 18px">${name}</h3>
+        <div class="content" style="padding-top:8px">
+          <div class="swatch-grid" style="grid-template-columns:repeat(auto-fill,minmax(44px,1fr))">
+            ${arr.map(c=>`<div class="sw" data-hex="${c}"><div class="ink" style="background:${c}"></div></div>`).join('')}
+          </div>
+          <div class="row-wrap" style="margin-top:8px">
+            <button class="btn" data-action="rec-add" data-colors='${JSON.stringify(arr)}'>모두 추가</button>
+            <button class="btn ghost" data-action="rec-copy" data-colors='${JSON.stringify(arr)}'>HEX 복사</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  function buildMiniGrid(){
+    const grid=document.getElementById('miniGrid'); grid.innerHTML='';
+    const hues=Array.from({length:24},(_,i)=>i*15);
+    const sats=[40,70]; const lights=[70,50,30];
+    hues.forEach(h=>sats.forEach(s=>lights.forEach(l=>{
+      const rgb=App.utils.hslToRgb({h,s,l});
+      const hex=App.utils.rgbToHex(rgb);
+      const cell=document.createElement('div');
+      cell.className='mini-cell'; cell.style.background=hex; cell.dataset.hex=hex;
+      grid.appendChild(cell);
+    })));
+  }
+
+  function setCurrentColor(hex, source='internal'){
+    if(!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
+    hex=hex.toUpperCase(); App.state.currentColor=hex; App.state.gradient.start=hex;
+
+    const {h,s,l}=App.utils.rgbToHsl(App.utils.hexToRgb(hex));
+    const colorEl=document.getElementById('colorInput1'); if(colorEl) colorEl.value=hex;
+    const hexEl=document.getElementById('hexInput1'); if(hexEl) hexEl.value=hex;
+    document.getElementById('preview1').style.background=hex;
+    document.getElementById('hVal').textContent=h+'°';
+    document.getElementById('sVal').textContent=s+'%';
+    document.getElementById('lVal').textContent=l+'%';
+    if(source!=='slider'){
+      ['hSl','sSl','lSl'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        if(id==='hSl') el.value=h; if(id==='sSl') el.value=s; if(id==='lSl') el.value=l;
+      });
+    }
+    setGradientColors(hex, App.state.gradient.end);
+    renderWCAG(); renderHarmonies(); renderExtraRegions();
+  }
+  function setGradientColors(start,end){
+    if(!/^#[0-9A-Fa-f]{6}$/.test(start)||!/^#[0-9A-Fa-f]{6}$/.test(end)) return;
+    start=start.toUpperCase(); end=end.toUpperCase(); App.state.gradient={start,end};
+    document.getElementById('colorStart').value=start; document.getElementById('hexStart').value=start;
+    document.getElementById('colorEnd').value=end; document.getElementById('hexEnd').value=end;
+    const css=`linear-gradient(135deg, ${start}, ${end})`;
+    document.getElementById('gradPrev').style.background=css;
+    document.getElementById('cssCode').textContent=`background: ${css};`;
+  }
+  function addToPalette(hex,name){
+    if(!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
+    hex=hex.toUpperCase();
+    const item={id:String(Date.now()+Math.random()),hex,name:name||App.utils.colorNameKo(hex),locked:false};
+    App.state.palette.push(item); saveDB(); renderPaletteGrids();
+  }
+  function bindEvents(){
+    document.querySelector('.tabs').addEventListener('click', e=>{
+      if(!e.target.matches('.tab-btn')) return;
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      e.target.classList.add('active');
+      document.querySelectorAll('main > section').forEach(s=>s.hidden=true);
+      document.getElementById('tab-'+e.target.dataset.tab).hidden=false;
+    });
+
+    document.getElementById('btn-theme').onclick=()=>{
+      const cur=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+      document.documentElement.setAttribute('data-theme',cur);
+      localStorage.setItem('cs-theme',cur);
+      document.getElementById('btn-theme').textContent = cur==='light'?'🌞 라이트':'🌙 다크';
+    };
+
+    document.getElementById('colorInput1').addEventListener('input', e=>setCurrentColor(e.target.value));
+    document.getElementById('hexInput1').addEventListener('input', e=>{
+      let v=e.target.value.trim();
+      if(/^#?[0-9A-Fa-f]{6}$/.test(v)){ if(v[0]!=='#') v='#'+v; setCurrentColor(v);}
+    });
+    document.getElementById('eyedrop1').onclick=()=>('EyeDropper'in window)? new EyeDropper().open().then(res=>setCurrentColor(res.sRGBHex)).catch(()=>{}):alert('이 브라우저는 Eyedropper API를 지원하지 않습니다.');
+
+    ['hSl','sSl','lSl'].forEach(id=>document.getElementById(id).addEventListener('input', ()=>{
+      const h=+document.getElementById('hSl').value, s=+document.getElementById('sSl').value, l=+document.getElementById('lSl').value;
+      document.getElementById('hVal').textContent=h+'°'; document.getElementById('sVal').textContent=s+'%'; document.getElementById('lVal').textContent=l+'%';
+      const hex=App.utils.rgbToHex(App.utils.hslToRgb({h,s,l})); setCurrentColor(hex,'slider');
+    }));
+
+    document.getElementById('addCurrent').onclick=()=>{ addToPalette(App.state.currentColor); App.utils.toast('팔레트에 추가했습니다.'); };
+
+    const openBtn=document.getElementById('openMiniGrid');
+    const pop=document.getElementById('miniPopover');
+    openBtn.addEventListener('click', ()=>{
+      const row=openBtn.getBoundingClientRect();
+      pop.style.display='block';
+      pop.style.top=(row.bottom+window.scrollY+8)+'px';
+      pop.style.left=(row.left+window.scrollX-4)+'px';
+    });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') pop.style.display='none'; });
+    document.addEventListener('click', (e)=>{
+      if(pop.style.display==='block' && !pop.contains(e.target) && e.target.id!=='openMiniGrid') pop.style.display='none';
+    });
+    document.getElementById('miniGrid').addEventListener('click', e=>{
+      const cell=e.target.closest('.mini-cell'); if(!cell) return;
+      setCurrentColor(cell.dataset.hex); pop.style.display='none';
+    });
+
+    ['colorStart','hexStart'].forEach(id=>document.getElementById(id).addEventListener('input', e=>setGradientColors(e.target.value, App.state.gradient.end)));
+    ['colorEnd','hexEnd'].forEach(id=>document.getElementById(id).addEventListener('input', e=>setGradientColors(App.state.gradient.start, e.target.value)));
+    document.getElementById('copyCss').onclick=()=>App.utils.copyText(document.getElementById('cssCode').textContent);
+
+    document.getElementById('palSelect').onchange=(e)=>{App.state.currentPaletteId=e.target.value; saveDB(); renderPaletteGrids();}
+    document.getElementById('btn-new').onclick=()=>{const name=prompt('새 팔레트 이름','새 팔레트'); if(!name) return; const pal={id:String(Date.now()), name, colors:[]}; App.state.palettesDB.push(pal); App.state.currentPaletteId=pal.id; saveDB(); refreshPalSelect(); renderPaletteGrids();}
+    document.getElementById('btn-save').onclick=()=>{saveDB(); App.utils.toast('저장됨');}
+    document.getElementById('btn-dup').onclick=()=>{const base=App.state.palettesDB.find(p=>p.id===App.state.currentPaletteId); if(!base) return; const np={id:String(Date.now()), name:base.name+' 복제', colors:JSON.parse(JSON.stringify(App.state.palette))}; App.state.palettesDB.push(np); App.state.currentPaletteId=np.id; saveDB(); refreshPalSelect(); renderPaletteGrids();}
+    document.getElementById('btn-del').onclick=()=>{if(!confirm('현재 팔레트를 삭제할까요?')) return; App.state.palettesDB=App.state.palettesDB.filter(p=>p.id!==App.state.currentPaletteId); if(!App.state.palettesDB.length){App.state.palettesDB=[{id:String(Date.now()), name:'기본 팔레트', colors:[]}];} App.state.currentPaletteId=App.state.palettesDB[0].id; saveDB(); refreshPalSelect(); renderPaletteGrids();}
+    document.getElementById('resetUnlocked').onclick=()=>{App.state.palette=App.state.palette.filter(c=>c.locked); saveDB(); renderPaletteGrids();}
+
+    document.body.addEventListener('click', handleClicks);
+    document.body.addEventListener('mouseover', handleOver);
+    document.body.addEventListener('mouseout', handleOut);
+
+    const fileInput=document.getElementById('fileInput');
+    document.getElementById('btn-import').onclick=()=>fileInput.click();
+    document.getElementById('btn-export').onclick=exportJSON;
+    document.getElementById('btn-export-ase').onclick=exportASE;
+    fileInput.onchange=handleFileImport;
+    document.getElementById('btn-share').onclick=showShareModal;
+    document.getElementById('modal-close-btn').onclick=hideShareModal;
+    document.getElementById('modal').onclick=(e)=>{if(e.target.id==='modal') hideShareModal();};
+    document.getElementById('copy-url-btn').onclick=()=>{const inp=document.getElementById('share-url'); inp.select(); App.utils.copyText(inp.value);}
+
+    const dz=document.getElementById('imageDropzone');
+    dz.onclick=()=>fileInput.click();
+    dz.addEventListener('dragover',(e)=>{e.preventDefault(); dz.style.borderColor='var(--pri)';});
+    dz.addEventListener('dragleave',()=>dz.style.borderColor='var(--border)');
+    dz.addEventListener('drop',(e)=>{e.preventDefault(); dz.style.borderColor='var(--border)'; if(e.dataTransfer.files.length) handleImageFile(e.dataTransfer.files[0]);});
+
+    document.getElementById('btn-drive-auth').onclick=driveAuth;
+    document.getElementById('btn-drive-share').onclick=driveSharePalette;
+  }
+
+  function handleClicks(e){
+    const sw=e.target.closest('.sw');
+    if(sw){
+      if(sw.closest('#imageResultGrid')){
+        sw.classList.toggle('selected');
+        return;
+      }
+      const act=e.target.closest('[data-action]');
+      if(act && sw.dataset.id){
+        const id=sw.dataset.id; const c=App.state.palette.find(x=>x.id===id); if(!c) return;
+        switch(act.dataset.action){
+          case'lock': c.locked=!c.locked; saveDB(); renderPaletteGrids(); break;
+          case'copy': App.utils.copyText(c.hex); break;
+          case'delete': if(c.locked) return App.utils.toast('잠긴 색상은 삭제 불가'); App.state.palette=App.state.palette.filter(x=>x.id!==id); saveDB(); renderPaletteGrids(); break;
+        }
+        e.stopPropagation(); return;
+      } else {
+        pinHoverCard(e, sw.dataset.hex, sw.dataset.name||sw.dataset.hex);
+      }
+    }
+    const recBtn = e.target.closest('[data-action^="rec-"]');
+    if(recBtn){
+      const arr = JSON.parse(recBtn.dataset.colors||'[]');
+      if(recBtn.dataset.action==='rec-add'){ arr.forEach(c=>addToPalette(c)); App.utils.toast(`${arr.length}개 색상 추가`); }
+      if(recBtn.dataset.action==='rec-copy'){ App.utils.copyText(arr.join(', ')); }
+    }
+
+    if(e.target.id==='hcAdd') addToPalette(App.state.hoverCard.hex);
+    if(e.target.id==='hcCopyHex') App.utils.copyText(App.state.hoverCard.hex);
+    if(e.target.id==='hcCopyRgb') App.utils.copyText(document.getElementById('hcRgb').textContent);
+    if(e.target.id==='hcPin'){ App.state.hoverCard.pinned=!App.state.hoverCard.pinned; document.getElementById('hoverCard').classList.toggle('pinned',App.state.hoverCard.pinned); document.getElementById('hcPin').textContent=App.state.hoverCard.pinned?'📍':'📌';}
+    if(e.target.id==='hcClose'){ unpinHoverCard(); }
+  }
+  function handleOver(e){ const sw=e.target.closest('.sw'); if(sw) showHoverCard(e, sw.dataset.hex, sw.dataset.name||sw.dataset.hex);}
+  function handleOut(e){ const sw=e.target.closest('.sw'); if(sw) hideHoverCard();}
+
+  function showHoverCard(e, hex, name){
+    if(!hex) return; const hc=document.getElementById('hoverCard'); const rgb=App.utils.hexToRgb(hex);
+    App.state.hoverCard.hex=hex;
+    document.getElementById('hcTop').style.background=hex;
+    document.getElementById('hcName').textContent=name;
+    document.getElementById('hcMeta').textContent=hex.toUpperCase();
+    document.getElementById('hcHex').textContent=hex.toUpperCase();
+    document.getElementById('hcRgb').textContent=`rgb(${rgb.r},${rgb.g},${rgb.b})`;
+    hc.style.display='block'; if(!App.state.hoverCard.pinned) moveHoverCard(e);
+  }
+  function moveHoverCard(e){ const hc=document.getElementById('hoverCard'); const pad=14; let x=e.clientX+pad, y=e.clientY+pad; const rect=hc.getBoundingClientRect(); if(x+rect.width>window.innerWidth) x=e.clientX-rect.width-pad; if(y+rect.height>window.innerHeight) y=e.clientY-rect.height-pad; hc.style.left=x+'px'; hc.style.top=y+'px';}
+  function hideHoverCard(){ if(!App.state.hoverCard.pinned) document.getElementById('hoverCard').style.display='none';}
+  function pinHoverCard(e,hex,name){ App.state.hoverCard.pinned=true; document.getElementById('hoverCard').classList.add('pinned'); document.getElementById('hcPin').textContent='📍'; showHoverCard(e,hex,name);}
+  function unpinHoverCard(){ App.state.hoverCard.pinned=false; document.getElementById('hoverCard').classList.remove('pinned'); document.getElementById('hcPin').textContent='📌'; hideHoverCard();}
+  function exportJSON(){
+    const pal=App.state.palettesDB.find(p=>p.id===App.state.currentPaletteId); if(!pal) return App.utils.toast('내보낼 팔레트가 없습니다.');
+    const data=JSON.stringify({name:pal.name, colors:App.state.palette}, null, 2);
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download=`${pal.name.replace(/\s/g,'_')}.json`; a.click();
+  }
+  function exportASE(){
+    const pal=App.state.palettesDB.find(p=>p.id===App.state.currentPaletteId); if(!pal||!pal.colors.length) return App.utils.toast('내보낼 팔레트가 없습니다.');
+    const bytes=[]; const u16=v=>{bytes.push((v>>8)&255, v&255)}, u32=v=>{bytes.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255)}, asc=s=>{for(let i=0;i<s.length;i++) bytes.push(s.charCodeAt(i)&255)}, f32=f=>{const b=new ArrayBuffer(4),dv=new DataView(b); dv.setFloat32(0,f,false); bytes.push(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3));}, ucs=s=>{u16(s.length+1); for(let i=0;i<s.length;i++) u16(s.charCodeAt(i)); u16(0);};
+    asc('ASEF'); u16(1); u16(0); u32(pal.colors.length);
+    pal.colors.forEach(c=>{
+      const name=c.name||c.hex; const buf=[]; const p16=v=>{buf.push((v>>8)&255,v&255)}, p32=v=>{buf.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255)}, pAsc=s=>{for(let i=0;i<s.length;i++) buf.push(s.charCodeAt(i)&255)}, pF=f=>{const b=new ArrayBuffer(4),dv=new DataView(b); dv.setFloat32(0,f,false); buf.push(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3));}, pU=s=>{p16(s.length+1); for(let i=0;i<s.length;i++) p16(s.charCodeAt(i)); p16(0);}
+      pU(name); pAsc('RGB ');
+      const {r,g,b}=App.utils.hexToRgb(c.hex); pF(r/255); pF(g/255); pF(b/255);
+      p16(0x0000);
+      u16(0x0001); p32(buf.length); bytes.push(...buf);
+    });
+    const blob=new Blob([new Uint8Array(bytes)],{type:'application/octet-stream'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${(pal.name||'palette').replace(/\s+/g,'_')}.ase`; a.click();
+  }
+  function handleFileImport(e){
+    const files=e.target.files; if(!files.length) return;
+    for(const f of files){
+      const ext=f.name.split('.').pop().toLowerCase();
+      const r=new FileReader();
+      if(ext==='json'){ r.onload=(ev)=>importJSON(ev.target.result); r.readAsText(f);}
+      else if(ext==='ase'){ r.onload=(ev)=>importASE(ev.target.result,f.name); r.readAsArrayBuffer(f);}
+      else if(f.type.startsWith('image/')){ handleImageFile(f); }
+    }
+    e.target.value='';
+  }
+  function importJSON(text){
+    try{
+      const obj=JSON.parse(text);
+      if(obj?.colors?.length){
+        const pal={id:String(Date.now()), name:obj.name||'가져온 팔레트', colors: obj.colors.map((c,i)=>({id:String(i)+'-'+Math.random(), hex:((c.hex||c.color||'#000000')+'').toUpperCase(), name:c.name||App.utils.colorNameKo(c.hex||c.color||'#000000'), locked:!!c.locked}))};
+        App.state.palettesDB.push(pal); App.state.currentPaletteId=pal.id; saveDB(); refreshPalSelect(); renderPaletteGrids(); App.utils.toast('JSON 가져오기 완료');
+      } else throw new Error();
+    }catch{ App.utils.toast('유효한 JSON 형식이 아닙니다.');}
+  }
+  function importASE(buf, filename){
+    try{
+      const dv=new DataView(buf); let off=0; const rd16=()=>{const v=dv.getUint16(off,false); off+=2; return v;}; const rd32=()=>{const v=dv.getUint32(off,false); off+=4; return v;}; const rdStr=()=>{const len=rd16(); let s=''; for(let i=0;i<len-1;i++) s+=String.fromCharCode(dv.getUint16(off+i*2,false)); off+=len*2; return s;};
+      const sig=String.fromCharCode(...new Uint8Array(buf,0,4)); if(sig!=='ASEF') throw new Error();
+      off=8; const blocks=rd32(); const colors=[];
+      for(let i=0;i<blocks;i++){
+        const type=rd16(), size=rd32(), end=off+size;
+        if(type===0x0001){
+          const name=rdStr(); const model=String.fromCharCode(...new Uint8Array(buf,off,4)); off+=4; let r,g,b;
+          if(model==='RGB '){ r=Math.round(dv.getFloat32(off,false)*255); off+=4; g=Math.round(dv.getFloat32(off,false)*255); off+=4; b=Math.round(dv.getFloat32(off,false)*255); off+=4; }
+          else if(model==='CMYK'){ const c=dv.getFloat32(off,false), m=dv.getFloat32(off+4,false), y=dv.getFloat32(off+8,false), k=dv.getFloat32(off+12,false); r=Math.round(255*(1-c)*(1-k)); g=Math.round(255*(1-m)*(1-k)); b=Math.round(255*(1-y)*(1-k)); off+=16; }
+          else if(model==='LAB '){ const L=dv.getFloat32(off,false), a=dv.getFloat32(off+4,false), B=dv.getFloat32(off+8,false); let Y=(L+16)/116, X=a/500+Y, Z=Y-B/200; const f=t=>t>0.20689655?t*t*t:(t-16/116)/7.787; X=0.95047*f(X); Y=1.0*f(Y); Z=1.08883*f(Z); let R=X*3.2406+Y*-1.5372+Z*-0.4986; let G=X*-0.9689+Y*1.8758+Z*0.0415; let B2=X*0.0557+Y*-0.2040+Z*1.0570; const srgb=t=>t>0.0031308? 1.055*Math.pow(t,1/2.4)-0.055:12.92*t; r=Math.round(srgb(R)*255); g=Math.round(srgb(G)*255); b=Math.round(srgb(B2)*255); off+=12;}
+          off=end; colors.push({name, hex: App.utils.rgbToHex({r:App.utils.clamp(r,0,255), g:App.utils.clamp(g,0,255), b:App.utils.clamp(b,0,255)})});
+        } else { off=end; }
+      }
+      if(!colors.length) throw new Error();
+      const pal={id:String(Date.now()), name:(filename||'ASE 팔레트').replace(/\.ase$/i,''), colors: colors.map((c,i)=>({id:String(i)+'-'+Math.random(), hex:c.hex.toUpperCase(), name:c.name||App.utils.colorNameKo(c.hex), locked:false}))};
+      App.state.palettesDB.push(pal); App.state.currentPaletteId=pal.id; saveDB(); refreshPalSelect(); renderPaletteGrids(); App.utils.toast('ASE 가져오기 완료');
+    }catch(e){ App.utils.toast('ASE 파싱 실패'); }
+  }
+
+  function handleImageFile(file){
+    if(!file.type.startsWith('image/')) return;
+    const r=new FileReader();
+    r.onload=(e)=>{ const img=document.getElementById('imagePreview'); img.src=e.target.result; img.style.display='block'; img.onload=()=>extractColors(img); document.getElementById('imageResult').style.display='block'; };
+    r.readAsDataURL(file);
+  }
+  function extractColors(img){
+    const c=document.createElement('canvas'), ctx=c.getContext('2d'); const M=120;
+    let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if(w>h){ if(w>M){ h=Math.round(h*(M/w)); w=M; } } else { if(h>M){ w=Math.round(w*(M/h)); h=M; } }
+    c.width=w; c.height=h; ctx.drawImage(img,0,0,w,h);
+    const data=ctx.getImageData(0,0,w,h).data, map={};
+    for(let i=0;i<data.length;i+=4){ if(data[i+3]<128) continue; const R=Math.round(data[i]/16)*16, G=Math.round(data[i+1]/16)*16, B=Math.round(data[i+2]/16)*16; const k=`${R},${G},${B}`; map[k]=(map[k]||0)+1;}
+    const top=Object.entries(map).sort(([,a],[,b])=>b-a).slice(0,24).map(([k])=>{const [r,g,b]=k.split(',').map(Number); return App.utils.rgbToHex({r,g,b});});
+    const grid=document.getElementById('imageResultGrid');
+    grid.innerHTML=top.map(c=>`<div class="sw" data-hex="${c}" data-name="${c}"><div class="ink" style="background:${c}"></div></div>`).join('');
+    document.getElementById('addImageToPalette').onclick=()=>{ 
+      const sel=[...document.querySelectorAll('#imageResultGrid .sw.selected')].map(x=>x.dataset.hex);
+      if(!sel.length) return App.utils.toast('선택된 색상이 없습니다.');
+      sel.forEach(c=>addToPalette(c)); App.utils.toast(`${sel.length}개 색상 추가`);
+    };
+  }
+
+  function showShareModal(){
+    const pal=App.state.palette; if(!pal.length) return App.utils.toast("공유할 색상이 없습니다.");
+    const hexs=pal.map(c=>c.hex.slice(1)).join(','); const url=`${location.origin}${location.pathname}?palette=${hexs}`;
+    document.getElementById('share-url').value=url; const box=document.getElementById('qrcode'); box.innerHTML=''; 
+    try{ new QRCode(box,{text:url,width:200,height:200,colorDark:"#111",colorLight:"#fff"});}catch(e){}
+    document.getElementById('modal').classList.add('visible'); document.getElementById('modal').setAttribute('aria-hidden','false');
+  }
+  function hideShareModal(){ document.getElementById('modal').classList.remove('visible'); document.getElementById('modal').setAttribute('aria-hidden','true'); document.getElementById('qrcode').innerHTML=''; }
+
+  function driveAuth(){
+    if(!DRIVE_CFG.API_KEY || !DRIVE_CFG.CLIENT_ID) { App.utils.toast('API_KEY/CLIENT_ID를 코드 상단에 설정하세요.'); return; }
+    gapi.load('client:auth2', async ()=>{
+      try{
+        await gapi.client.init({apiKey: DRIVE_CFG.API_KEY, clientId: DRIVE_CFG.CLIENT_ID, scope: DRIVE_CFG.SCOPE, discoveryDocs:["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]});
+        App.state.gapiInited=true;
+        if(!gapi.auth2.getAuthInstance().isSignedIn.get()){
+          await gapi.auth2.getAuthInstance().signIn();
+        }
+        App.state.driveAuthed=true;
+        App.utils.toast('Drive 연결 완료');
+      }catch(e){ console.error(e); App.utils.toast('Drive 연결 실패'); }
+    });
+  }
+
+  async function driveSharePalette(){
+    if(!App.state.driveAuthed){ App.utils.toast('먼저 Drive 연결을 해주세요.'); return; }
+    const pal=App.state.palettesDB.find(p=>p.id===App.state.currentPaletteId);
+    if(!pal || !pal.colors.length) return App.utils.toast('공유할 팔레트가 없습니다.');
+
+    const rootId = await ensureFolder(null, DRIVE_CFG.FOLDER_ROOT);
+    const palFolderId = await ensureFolder(rootId, pal.name);
+
+    const jsonText = JSON.stringify({name:pal.name, colors:App.state.palette}, null, 2);
+    const jsonBlob = new Blob([jsonText], {type:'application/json'});
+    const aseBlob = buildASEBlob(pal.colors);
+
+    await uploadToDrive(palFolderId, `${pal.name}.json`, jsonBlob, 'application/json');
+    await uploadToDrive(palFolderId, `${pal.name}.ase`,  aseBlob,  'application/octet-stream');
+
+    await setPermissionAnyone(palFolderId);
+    const link = `https://drive.google.com/drive/folders/${palFolderId}`;
+    navigator.clipboard?.writeText(link);
+    App.utils.toast('Drive 공유 링크를 클립보드에 복사했습니다.');
+    document.getElementById('share-url').value = link;
+    const box=document.getElementById('qrcode'); box.innerHTML='';
+    try{ new QRCode(box,{text:link,width:200,height:200,colorDark:"#111",colorLight:"#fff"});}catch(e){}
+    document.getElementById('modal').classList.add('visible'); document.getElementById('modal').setAttribute('aria-hidden','false');
+  }
+
+  function buildASEBlob(colors){
+    const bytes=[]; const u16=v=>{bytes.push((v>>8)&255, v&255)}, u32=v=>{bytes.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255)}, asc=s=>{for(let i=0;i<s.length;i++) bytes.push(s.charCodeAt(i)&255)}, f32=f=>{const b=new ArrayBuffer(4),dv=new DataView(b); dv.setFloat32(0,f,false); bytes.push(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3));}, ucs=s=>{u16(s.length+1); for(let i=0;i<s.length;i++) u16(s.charCodeAt(i)); u16(0);};
+    asc('ASEF'); u16(1); u16(0); u32(colors.length);
+    colors.forEach(c=>{
+      const name=c.name||c.hex; const buf=[]; const p16=v=>{buf.push((v>>8)&255,v&255)}, p32=v=>{buf.push((v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255)}, pAsc=s=>{for(let i=0;i<s.length;i++) buf.push(s.charCodeAt(i)&255)}, pF=f=>{const b=new ArrayBuffer(4),dv=new DataView(b); dv.setFloat32(0,f,false); buf.push(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3));}, pU=s=>{p16(s.length+1); for(let i=0;i<s.length;i++) p16(s.charCodeAt(i)); p16(0);}
+      pU(name); pAsc('RGB ');
+      const {r,g,b}=App.utils.hexToRgb(c.hex); pF(r/255); pF(g/255); pF(b/255);
+      p16(0x0000);
+      u16(0x0001); p32(buf.length); bytes.push(...buf);
+    });
+    return new Blob([new Uint8Array(bytes)],{type:'application/octet-stream'});
+  }
+
+  async function ensureFolder(parentId, name){
+    const qParts = [`mimeType='application/vnd.google-apps.folder'`, `name='${name.replace(/'/g,"\\'")}'`, 'trashed=false'];
+    if(parentId) qParts.push(`'${parentId}' in parents`);
+    const res = await gapi.client.drive.files.list({q: qParts.join(' and '), fields:'files(id,name)'});
+    if(res.result.files && res.result.files.length) return res.result.files[0].id;
+    const created = await gapi.client.drive.files.create({
+      resource: {name, mimeType:'application/vnd.google-apps.folder', parents: parentId? [parentId]: undefined},
+      fields:'id'
+    });
+    return created.result.id;
+  }
+  async function uploadToDrive(parentId, name, blob, mime){
+    const metadata = { name, mimeType: mime, parents: [parentId] };
+    const boundary = '-------314159265358979323846';
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const closeDelim = "\r\n--" + boundary + "--";
+    const reader = await blob.arrayBuffer();
+    const base64Data = btoa(String.fromCharCode(...new Uint8Array(reader)));
+    const multipartRequestBody =
+      delimiter + 'Content-Type: application/json\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter + 'Content-Type: ' + mime + '\r\n' +
+      'Content-Transfer-Encoding: base64\r\n\r\n' +
+      base64Data + closeDelim;
+
+    const res = await gapi.client.request({
+      path:'/upload/drive/v3/files',
+      method:'POST',
+      params:{uploadType:'multipart'},
+      headers:{'Content-Type': 'multipart/related; boundary="' + boundary + '"'},
+      body: multipartRequestBody
+    });
+    return res.result;
+  }
+  async function setPermissionAnyone(fileId){
+    try{
+      await gapi.client.drive.permissions.create({
+        fileId, resource:{role:'reader', type:'anyone'}
+      });
+    }catch(e){ }
+  }
+
+  function createNeutralScale(base){
+    const steps=[0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85];
+    const baseHsl=App.utils.rgbToHsl(App.utils.hexToRgb(base));
+    const greyStart='#F9FAFB';
+    const greyEnd='#111827';
+    return steps.map(step=>{
+      const grey=App.utils.mixColors(greyStart, greyEnd, step);
+      const tinted=App.utils.mixColors(grey, base, 0.18);
+      const greyL=App.utils.rgbToHsl(App.utils.hexToRgb(grey)).l;
+      const tintedHsl=App.utils.rgbToHsl(App.utils.hexToRgb(tinted));
+      const saturation=App.utils.clamp(Math.round((baseHsl.s*0.25)+6),4,24);
+      return App.utils.rgbToHex(App.utils.hslToRgb({h:tintedHsl.h, s:saturation, l:greyL}));
+    });
+  }
+})();
+</script>
+</body>
+</html>
